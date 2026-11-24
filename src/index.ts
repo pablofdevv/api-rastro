@@ -1,6 +1,7 @@
 import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import { connectDb, getDb } from "./db";
+import { seedDatabase } from "./seed";
 import listingsRouter from "./routes/listings";
 import offersRouter from "./routes/offers";
 
@@ -16,8 +17,9 @@ app.use((req, _res, next) => {
 // CORS: deja que la web de React llame a la API
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN); // quién
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE"); // qué métodos
+  const origin = req.headers.origin;
+  res.setHeader("Access-Control-Allow-Origin", origin || CORS_ORIGIN); // quién
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS"); // qué métodos
   res.setHeader("Access-Control-Allow-Headers", "Content-Type"); // qué cabeceras
   if (req.method === "OPTIONS") {
     res.sendStatus(204); // el navegador pregunta antes: le decimos que sí
@@ -33,6 +35,16 @@ app.use(express.json());
 app.get("/api/health", async (_req, res) => {
   await getDb().command({ ping: 1 }); // pregunta a MongoDB "¿estás ahí?"
   res.json({ status: "ok", db: getDb().databaseName });
+});
+
+// Ruta para sembrar datos en Atlas
+app.get("/api/seed", async (_req, res) => {
+  try {
+    await seedDatabase();
+    res.json({ message: "Seed completado con éxito" });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 // (aquí irán los routers de las próximas partes)
